@@ -1,5 +1,11 @@
 repeat task.wait(0.5) until game:IsLoaded() and (workspace:FindFirstChild("YourPlayer") or (workspace:FindFirstChild("Mobs") and #workspace.Mobs:GetChildren() > 0))
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/quadshoota/RBLX/refs/heads/main/InsaneEagle27.lua"))()
+local Library
+repeat
+    local ok, result = pcall(function()
+        Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/quadshoota/RBLX/refs/heads/main/InsaneEagle27.lua"))()
+    end)
+    if (not ok or not Library) then task.wait(1) end
+until Library
 
 
 local Data =
