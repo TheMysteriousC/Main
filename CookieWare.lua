@@ -147,6 +147,15 @@ local Filesystem =
 local initsys = Filesystem:DoEnvironment()
 repeat task.wait() until initsys == true
 
+local isInMenu = workspace:FindFirstChild("YourPlayer") ~= nil
+if (isInMenu) then
+    task.wait(2)
+    pcall(function()
+        game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("PrivateServerSea"):InvokeServer()
+    end)
+    return
+end
+
 Library:Window{
     Name = "CookieWare",
     Key = "syscureistheboss1337",
@@ -241,15 +250,15 @@ local Config =
         QuestMobs = {},
     },
 
-Farm =
-{
-    AutoFarm = false,
-    Enemies = {},
-    SelectedEnemies = {},
-    TweenSpeed = 150,
-    PlatformStand = true,
-    SelectedTool = "",
-},
+    Farm =
+    {
+        AutoFarm = false,
+        Enemies = {},
+        SelectedEnemies = {},
+        TweenSpeed = 150,
+        PlatformStand = true,
+        SelectedTool = "",
+    },
 
     Combat =
     {
@@ -410,7 +419,7 @@ local Features =
                     continue
                 end
 
-                local hum = v:FindFirstChild("Humanoid")
+                local hum = v:FindFirstChildOfClass("Humanoid")
                 if (not hum or hum.Health <= 0) then continue end
 
                 local pivot = v:GetPivot()
@@ -434,20 +443,20 @@ local Features =
                 end
             end
 
-local ActiveRemote = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-if (not ActiveRemote) then
-    local toolinbackpack = Config.Farm.SelectedTool ~= "" and game.Players.LocalPlayer.Backpack:FindFirstChild(Config.Farm.SelectedTool) or game.Players.LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-    humanoid:EquipTool(toolinbackpack)
-    return
-end
+            local ActiveRemote = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            if (not ActiveRemote) then
+                local toolinbackpack = Config.Farm.SelectedTool ~= "" and game.Players.LocalPlayer.Backpack:FindFirstChild(Config.Farm.SelectedTool) or game.Players.LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                humanoid:EquipTool(toolinbackpack)
+                return
+            end
 
-if (Config.Farm.SelectedTool ~= "" and ActiveRemote.Name ~= Config.Farm.SelectedTool) then
-    local toolinbackpack = game.Players.LocalPlayer.Backpack:FindFirstChild(Config.Farm.SelectedTool)
-    if (toolinbackpack) then
-        humanoid:EquipTool(toolinbackpack)
-        return
-    end
-end
+            if (Config.Farm.SelectedTool ~= "" and ActiveRemote.Name ~= Config.Farm.SelectedTool) then
+                local toolinbackpack = game.Players.LocalPlayer.Backpack:FindFirstChild(Config.Farm.SelectedTool)
+                if (toolinbackpack) then
+                    humanoid:EquipTool(toolinbackpack)
+                    return
+                end
+            end
 
             ActiveRemote = ActiveRemote.SwordScript.Activate
             if (not ActiveRemote) then return end
@@ -480,21 +489,32 @@ end
             end
         end,
 
-CollectDrops = function(self)
-    local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if (not hrp) then return end
+        CollectDrops = function(self)
+            local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if (not hrp) then return end
 
-    for i,v in pairs(workspace.Drops:GetChildren()) do
-        if (not v:IsA("Model")) then continue end
+            local drops = {}
+            for i,v in pairs(workspace.Drops:GetChildren()) do
+                if (not v:IsA("Model")) then continue end
 
-        for _,part in pairs(v:GetDescendants()) do
-            if (part:IsA("TouchTransmitter")) then
-                firetouchinterest(hrp, part.Parent, 0)
-                firetouchinterest(hrp, part.Parent, 1)
+                local ok, pivot = pcall(function() return v:GetPivot() end)
+                if (not ok) then continue end
+
+                local dist = (hrp.Position - pivot.Position).Magnitude
+                table.insert(drops, {model = v, dist = dist})
             end
-        end
-    end
-end,
+
+            table.sort(drops, function(a, b) return a.dist < b.dist end)
+
+            for _,drop in pairs(drops) do
+                for _,part in pairs(drop.model:GetDescendants()) do
+                    if (part:IsA("TouchTransmitter")) then
+                        firetouchinterest(hrp, part.Parent, 0)
+                        firetouchinterest(hrp, part.Parent, 1)
+                    end
+                end
+            end
+        end,
     },
 
     Combat =
