@@ -150,9 +150,19 @@ repeat task.wait() until initsys == true
 local isInMenu = workspace:FindFirstChild("YourPlayer") ~= nil
 if (isInMenu) then
     task.wait(2)
-    pcall(function()
-        game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("PrivateServerSea"):InvokeServer()
-    end)
+    local joined = false
+    local attempts = 0
+    while (not joined and attempts < 10) do
+        local ok = pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("PrivateServerSea"):InvokeServer()
+        end)
+        if (ok) then
+            joined = true
+        else
+            attempts = attempts + 1
+            task.wait(1)
+        end
+    end
     return
 end
 
