@@ -1,4 +1,24 @@
 repeat task.wait(0.5) until game:IsLoaded() and (workspace:FindFirstChild("YourPlayer") or (workspace:FindFirstChild("Mobs") and #workspace.Mobs:GetChildren() > 0))
+
+local isInMenu = workspace:FindFirstChild("YourPlayer") ~= nil
+if (isInMenu) then
+    task.wait(2)
+    local joined = false
+    local attempts = 0
+    while (not joined and attempts < 10) do
+        local ok = pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("PrivateServerSea"):InvokeServer()
+        end)
+        if (ok) then
+            joined = true
+        else
+            attempts = attempts + 1
+            task.wait(1)
+        end
+    end
+    return
+end
+
 local Library
 repeat
     local ok, result = pcall(function()
@@ -152,25 +172,6 @@ local Filesystem =
 
 local initsys = Filesystem:DoEnvironment()
 repeat task.wait() until initsys == true
-
-local isInMenu = workspace:FindFirstChild("YourPlayer") ~= nil
-if (isInMenu) then
-    task.wait(2)
-    local joined = false
-    local attempts = 0
-    while (not joined and attempts < 10) do
-        local ok = pcall(function()
-            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("PrivateServerSea"):InvokeServer()
-        end)
-        if (ok) then
-            joined = true
-        else
-            attempts = attempts + 1
-            task.wait(1)
-        end
-    end
-    return
-end
 
 Library:Window{
     Name = "CookieWare",
@@ -412,10 +413,12 @@ local Utils =
     end,
 }
 
-for i,v in pairs(workspace.Mobs:GetChildren()) do
-    local cleanName = v.Name:match("^[^%d]+")
-    if (#Config.Farm.Enemies == 0 or not Utils:Contains(Config.Farm.Enemies, cleanName)) then
-        table.insert(Config.Farm.Enemies, cleanName)
+if (workspace:FindFirstChild("Mobs")) then
+    for i,v in pairs(workspace.Mobs:GetChildren()) do
+        local cleanName = v.Name:match("^[^%d]+")
+        if (#Config.Farm.Enemies == 0 or not Utils:Contains(Config.Farm.Enemies, cleanName)) then
+            table.insert(Config.Farm.Enemies, cleanName)
+        end
     end
 end
 
