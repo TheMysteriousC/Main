@@ -1,4 +1,4 @@
-repeat task.wait() until game:IsLoaded()
+repeat task.wait(0.5) until game:IsLoaded() and workspace:FindFirstChild("Mobs") or workspace:FindFirstChild("YourPlayer")
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/quadshoota/RBLX/refs/heads/main/InsaneEagle27.lua"))()
 
 
@@ -747,13 +747,14 @@ Subsections.Automation:Button{
     Flag = "RefreshEnemies",
     Callback = function()
         Config.Farm.Enemies = {}
-        for i,v in pairs(workspace.Mobs:GetChildren()) do
-            local cleanName = v.Name:match("^[^%d]+")
-            if (not Utils:Contains(Config.Farm.Enemies, cleanName)) then
-                table.insert(Config.Farm.Enemies, cleanName)
-            end
+if (workspace:FindFirstChild("Mobs")) then
+    for i,v in pairs(workspace.Mobs:GetChildren()) do
+        local cleanName = v.Name:match("^[^%d]+")
+        if (#Config.Farm.Enemies == 0 or not Utils:Contains(Config.Farm.Enemies, cleanName)) then
+            table.insert(Config.Farm.Enemies, cleanName)
         end
     end
+end
 }
 
 Subsections.Automation:Toggle{
