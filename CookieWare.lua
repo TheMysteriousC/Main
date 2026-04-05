@@ -286,6 +286,14 @@ local Config =
         M2Interval = 5,
     },
 
+    Drop =
+    {
+        SelectedItem = "",
+        LoopDrop = false,
+        LoopInterval = 0.5,
+        Items = {},
+    },
+
     Player =
     {
 
@@ -411,6 +419,20 @@ local Utils =
             end
         end
     end,
+
+    GetInventoryItems = function(self)
+        local items = {}
+        local DataFolder = game.Players.LocalPlayer:FindFirstChild("Data")
+        if (not DataFolder) then return items end
+        for _,child in pairs(DataFolder:GetChildren()) do
+            local ok, val = pcall(function() return child.Value end)
+            if (ok and typeof(val) == "number" and val > 0) then
+                table.insert(items, child.Name)
+            end
+        end
+        table.sort(items)
+        return items
+    end,
 }
 
 if (workspace:FindFirstChild("Mobs")) then
@@ -420,6 +442,26 @@ if (workspace:FindFirstChild("Mobs")) then
             table.insert(Config.Farm.Enemies, cleanName)
         end
     end
+end
+
+local function GetToolOptions()
+    local tools = {""}
+    local char = game.Players.LocalPlayer.Character
+    local backpack = game.Players.LocalPlayer.Backpack
+    if (backpack) then
+        for _,v in pairs(backpack:GetChildren()) do
+            if (v:IsA("Tool")) then
+                table.insert(tools, v.Name)
+            end
+        end
+    end
+    if (char) then
+        local equipped = char:FindFirstChildOfClass("Tool")
+        if (equipped and not Utils:Contains(tools, equipped.Name)) then
+            table.insert(tools, equipped.Name)
+        end
+    end
+    return tools
 end
 
 local Features =
@@ -571,6 +613,24 @@ local Features =
             end
         end,
     },
+
+    Drop =
+    {
+        DropItem = function(self, itemName)
+            if (not itemName or itemName == "") then return end
+            local DropRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DropItem")
+            DropRemote:FireServer(game.Players.LocalPlayer, itemName)
+        end,
+
+        LoopDrop = function(self)
+            while (Config.Drop.LoopDrop) do
+                if (Config.Drop.SelectedItem ~= "") then
+                    self:DropItem(Config.Drop.SelectedItem)
+                end
+                task.wait(Config.Drop.LoopInterval)
+            end
+        end,
+    },
 }
 
 
@@ -591,6 +651,12 @@ local Tabs =
     Combat = Library:Tab{
         Title = "Combat",
         Icon = Filesystem.Settings.Storage["browser"],
+        Vertical = false,
+    },
+
+    Drop = Library:Tab{
+        Title = "Drop",
+        Icon = Filesystem.Settings.Storage["cloudfile"],
         Vertical = false,
     },
 
@@ -645,6 +711,18 @@ local Sections =
         ShowTitle = false,
     },
 
+    DropLeft = Tabs.Drop:Section{
+        Name = "Drop Items",
+        Side = "Left",
+        ShowTitle = false,
+    },
+
+    DropRight = Tabs.Drop:Section{
+        Name = "Settings",
+        Side = "Right",
+        ShowTitle = false,
+    },
+
     Configs = Tabs.Configs:Section{
         Name = "Configs",
         Side = "Left",
@@ -674,6 +752,18 @@ local Subsections =
 
     Armour = Sections.CombatRight:Subsection{
         Name = "Helmet",
+        Side = "Left",
+        HasSubsection = true,
+    },
+
+    DropItems = Sections.DropLeft:Subsection{
+        Name = "Items",
+        Side = "Left",
+        HasSubsection = true,
+    },
+
+    DropSettings = Sections.DropRight:Subsection{
+        Name = "Options",
         Side = "Left",
         HasSubsection = true,
     },
@@ -786,21 +876,9 @@ Subsections.Automation:Toggle{
     end
 }
 
-Subsections.Automation:Dropdown{
+local toolDropdown = Subsections.Automation:Dropdown{
     Name = "Select Tool",
-    Options = (function()
-        local tools = {""}
-        for _,v in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
-            if (v:IsA("Tool")) then
-                table.insert(tools, v.Name)
-            end
-        end
-        local equipped = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-        if (equipped and not Utils:Contains(tools, equipped.Name)) then
-            table.insert(tools, equipped.Name)
-        end
-        return tools
-    end)(),
+    Options = GetToolOptions(),
     Default = {Config.Farm.SelectedTool},
     Max = 1,
     Flag = "SelectedTool",
@@ -809,6 +887,14 @@ Subsections.Automation:Dropdown{
             value = value[1]
         end
         Config.Farm.SelectedTool = value or ""
+    end
+}
+
+Subsections.Automation:Button{
+    Name = "Refresh Tools",
+    Flag = "RefreshTools",
+    Callback = function()
+        toolDropdown:Refresh(GetToolOptions())
     end
 }
 
@@ -862,6 +948,61 @@ Subsections.Armour:Toggle{
                 Features.Combat:HelmetSpam()
             end)
         end
+    end
+}
+
+local dropItemDropdown = Subsections.DropItems:Dropdown{
+    Name = "Select Item",
+    Options = Utils:GetInventoryItems(),
+    Default = {Config.Drop.SelectedItem},
+    Max = 1,
+    Flag = "DropSelectedItem",
+    Callback = function(value)
+        if (type(value) == "table") then
+            value = value[1]
+        end
+        Config.Drop.SelectedItem = value or ""
+    end
+}
+
+Subsections.DropItems:Button{
+    Name = "Refresh Items",
+    Flag = "RefreshDropItems",
+    Callback = function()
+        dropItemDropdown:Refresh(Utils:GetInventoryItems())
+    end
+}
+
+Subsections.DropItems:Button{
+    Name = "Drop Item",
+    Flag = "DropItemButton",
+    Callback = function()
+        Features.Drop:DropItem(Config.Drop.SelectedItem)
+    end
+}
+
+Subsections.DropItems:Toggle{
+    Name = "Loop Drop",
+    State = Config.Drop.LoopDrop,
+    Flag = "LoopDrop",
+    Callback = function(value)
+        Config.Drop.LoopDrop = value
+        if (value) then
+            task.spawn(function()
+                Features.Drop:LoopDrop()
+            end)
+        end
+    end
+}
+
+Subsections.DropSettings:Slider{
+    Name = "Loop Interval (seconds)",
+    Min = 0.1,
+    Max = 10,
+    Default = Config.Drop.LoopInterval,
+    Flag = "LoopDropInterval",
+    Callback = function(value)
+        Config.Drop.LoopInterval = value
     end
 }
 
