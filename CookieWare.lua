@@ -876,6 +876,7 @@ Subsections.Automation:Toggle{
     end
 }
 
+task.wait(4)
 local toolDropdown = Subsections.Automation:Dropdown{
     Name = "Select Tool",
     Options = GetToolOptions(),
