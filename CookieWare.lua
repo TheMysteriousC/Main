@@ -876,7 +876,6 @@ Subsections.Automation:Toggle{
     end
 }
 
-task.wait(4)
 local toolDropdown = Subsections.Automation:Dropdown{
     Name = "Select Tool",
     Options = GetToolOptions(),
@@ -890,6 +889,67 @@ local toolDropdown = Subsections.Automation:Dropdown{
         Config.Farm.SelectedTool = value or ""
     end
 }
+
+local player = game.Players.LocalPlayer
+
+local function tryEquipTool(tool)
+    local char = player.Character
+    local humanoid = char and char:FindFirstChild("Humanoid")
+    if humanoid and tool then
+        humanoid:EquipTool(tool)
+    end
+end
+
+local function handleNewTool(tool)
+    if not tool:IsA("Tool") then return end
+
+    toolDropdown:Refresh(GetToolOptions())
+
+    if tool.Name == Config.Farm.SelectedTool then
+        tryEquipTool(tool)
+    end
+end
+
+local function setupBackpack()
+    local backpack = player:WaitForChild("Backpack")
+
+
+    for _, tool in ipairs(backpack:GetChildren()) do
+        handleNewTool(tool)
+    end
+
+
+    backpack.ChildAdded:Connect(handleNewTool)
+end
+
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    setupBackpack()
+end)
+
+
+setupBackpack()
+
+
+task.spawn(function()
+    while task.wait(5) do
+        toolDropdown:Refresh(GetToolOptions())
+
+        if Config.Farm.SelectedTool ~= "" then
+            local backpack = player:FindFirstChild("Backpack")
+            local char = player.Character
+            local humanoid = char and char:FindFirstChild("Humanoid")
+
+            if backpack and humanoid then
+                local tool = backpack:FindFirstChild(Config.Farm.SelectedTool)
+                if tool then
+                    humanoid:EquipTool(tool)
+                end
+            end
+        end
+    end
+end)
 
 Subsections.Automation:Button{
     Name = "Refresh Tools",
