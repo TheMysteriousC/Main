@@ -932,25 +932,6 @@ end)
 setupBackpack()
 
 
-task.spawn(function()
-    while task.wait(5) do
-        toolDropdown:Refresh(GetToolOptions())
-
-        if Config.Farm.SelectedTool ~= "" then
-            local backpack = player:FindFirstChild("Backpack")
-            local char = player.Character
-            local humanoid = char and char:FindFirstChild("Humanoid")
-
-            if backpack and humanoid then
-                local tool = backpack:FindFirstChild(Config.Farm.SelectedTool)
-                if tool then
-                    humanoid:EquipTool(tool)
-                end
-            end
-        end
-    end
-end)
-
 Subsections.Automation:Button{
     Name = "Refresh Tools",
     Flag = "RefreshTools",
