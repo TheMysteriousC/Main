@@ -189,7 +189,6 @@ end)
 Library:MobileButton(Filesystem.Settings.Storage["LunacyPNG"])
 Library:Notification("Loaded anti-afk", 5, "info")
 
-local hrp = game:GetService("Players").LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 local localplayer = game.Players.LocalPlayer
 local ModuleCache = {}
 local LoadedModules = {}
@@ -274,7 +273,7 @@ local Config =
         SelectedEnemies = {},
         TweenSpeed = 150,
         PlatformStand = true,
-        SelectedTool = "",
+        SelectedTool = "LightningAxe",
     },
 
     Combat =
@@ -342,8 +341,9 @@ local Utils =
 
     TweenTo = function(self, target)
         local TweenService = game:GetService("TweenService")
-        local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local humanoid = game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        local character = game.Players.LocalPlayer.Character
+        local hrp = character and character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character and character:FindFirstChild("Humanoid")
         if (not hrp or not humanoid) then return end
 
         local targetCFrame
@@ -365,6 +365,11 @@ local Utils =
         for i = 1, steps do
             if (not Config.Farm.AutoFarm) then break end
 
+            character = game.Players.LocalPlayer.Character
+            hrp = character and character:FindFirstChild("HumanoidRootPart")
+            humanoid = character and character:FindFirstChild("Humanoid")
+            if (not hrp or not humanoid) then break end
+
             local alpha = i / steps
             local stepCFrame = startPos:Lerp(targetCFrame, alpha)
             local stepDist = (hrp.Position - stepCFrame.Position).Magnitude
@@ -385,8 +390,8 @@ local Utils =
 
             local driftDist = (hrp.Position - stepCFrame.Position).Magnitude
             if (driftDist > 20) then
-                humanoid.PlatformStand = false
-                local character = game.Players.LocalPlayer.Character
+                if (humanoid) then humanoid.PlatformStand = false end
+                character = game.Players.LocalPlayer.Character
                 if (character) then
                     for _,v in pairs(character:GetDescendants()) do
                         if (v:IsA("Part") or v:IsA("MeshPart")) then
@@ -398,8 +403,9 @@ local Utils =
             end
         end
 
-        humanoid.PlatformStand = false
-        local character = game.Players.LocalPlayer.Character
+        character = game.Players.LocalPlayer.Character
+        humanoid = character and character:FindFirstChild("Humanoid")
+        if (humanoid) then humanoid.PlatformStand = false end
         if (character) then
             for _,v in pairs(character:GetDescendants()) do
                 if (v:IsA("Part") or v:IsA("MeshPart")) then
@@ -444,35 +450,22 @@ if (workspace:FindFirstChild("Mobs")) then
     end
 end
 
-local function GetToolOptions()
-    local tools = {""}
-    local char = game.Players.LocalPlayer.Character
-    local backpack = game.Players.LocalPlayer.Backpack
-    if (backpack) then
-        for _,v in pairs(backpack:GetChildren()) do
-            if (v:IsA("Tool")) then
-                table.insert(tools, v.Name)
-            end
-        end
-    end
-    if (char) then
-        local equipped = char:FindFirstChildOfClass("Tool")
-        if (equipped and not Utils:Contains(tools, equipped.Name)) then
-            table.insert(tools, equipped.Name)
-        end
-    end
-    return tools
-end
-
 local Features =
 {
     Farm =
     {
         AutoFarm = function(self)
+            local character = game.Players.LocalPlayer.Character
+            if (not character) then return end
+
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            local humanoid = character:FindFirstChild("Humanoid")
+            if (not hrp or not humanoid) then return end
+
+            if (humanoid.Health <= 0) then return end
+
             local closestDist = math.huge
             local closestModel = nil
-            local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
 
             for i,v in pairs(workspace.Mobs:GetChildren()) do
                 local cleanName = v.Name:match("^[^%d]+")
@@ -484,30 +477,31 @@ local Features =
                 if (not hum or hum.Health <= 0) then continue end
 
                 local pivot = v:GetPivot()
-                local dist = hrp and (hrp.Position - pivot.Position).Magnitude or math.huge
+                local dist = (hrp.Position - pivot.Position).Magnitude
                 if (dist < closestDist) then
                     closestDist = dist
                     closestModel = v
                 end
             end
 
-            if (not hrp or not humanoid) then return end
-
             if (not closestModel) then
                 humanoid.PlatformStand = false
                 return
             end
 
-            for i,v in pairs(game.Players.LocalPlayer.Character.HumanoidRootPart:GetChildren()) do
+            for i,v in pairs(hrp:GetChildren()) do
                 if (v:IsA("Motor6D")) then
                     v.Enabled = false
                 end
             end
 
-            local ActiveRemote = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            local ActiveRemote = character:FindFirstChildOfClass("Tool")
             if (not ActiveRemote) then
-                local toolinbackpack = Config.Farm.SelectedTool ~= "" and game.Players.LocalPlayer.Backpack:FindFirstChild(Config.Farm.SelectedTool) or game.Players.LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-                humanoid:EquipTool(toolinbackpack)
+                local toolName = Config.Farm.SelectedTool
+                local toolinbackpack = toolName ~= "" and game.Players.LocalPlayer.Backpack:FindFirstChild(toolName) or game.Players.LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                if (toolinbackpack) then
+                    humanoid:EquipTool(toolinbackpack)
+                end
                 return
             end
 
@@ -519,19 +513,18 @@ local Features =
                 end
             end
 
-            ActiveRemote = ActiveRemote.SwordScript.Activate
-            if (not ActiveRemote) then return end
+            local swordScript = ActiveRemote:FindFirstChild("SwordScript")
+            if (not swordScript) then return end
+            local ActiveFire = swordScript:FindFirstChild("Activate")
+            if (not ActiveFire) then return end
 
             local EnemyPivot = closestModel:GetPivot()
             local BehindAbove = EnemyPivot * CFrame.new(0, 6, 7)
             local TranslatedCFrame = CFrame.lookAt(BehindAbove.Position, EnemyPivot.Position)
 
-            local character = game.Players.LocalPlayer.Character
-            if (character) then
-                for _,v in pairs(character:GetDescendants()) do
-                    if (v:IsA("Part") or v:IsA("MeshPart")) then
-                        v.CanCollide = false
-                    end
+            for _,v in pairs(character:GetDescendants()) do
+                if (v:IsA("Part") or v:IsA("MeshPart")) then
+                    v.CanCollide = false
                 end
             end
 
@@ -545,13 +538,14 @@ local Features =
             else
                 humanoid.PlatformStand = Config.Farm.PlatformStand
                 hrp.CFrame = TranslatedCFrame
-                ActiveRemote:FireServer()
+                ActiveFire:FireServer()
                 return
             end
         end,
 
         CollectDrops = function(self)
-            local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local character = game.Players.LocalPlayer.Character
+            local hrp = character and character:FindFirstChild("HumanoidRootPart")
             if (not hrp) then return end
 
             local drops = {}
@@ -794,7 +788,7 @@ Subsections.Automation:Toggle{
                         end
                     end
                 end
-                local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+                local humanoid = character and character:FindFirstChild("Humanoid")
                 if (humanoid) then humanoid.PlatformStand = false end
             end
         end
@@ -876,67 +870,13 @@ Subsections.Automation:Toggle{
     end
 }
 
-local toolDropdown = Subsections.Automation:Dropdown{
-    Name = "Select Tool",
-    Options = GetToolOptions(),
-    Default = {Config.Farm.SelectedTool},
-    Max = 1,
+Subsections.Automation:Textbox{
+    Name = "Tool Name",
     Flag = "SelectedTool",
+    PlaceholderText = "e.g. LightningAxe",
+    Default = Config.Farm.SelectedTool,
     Callback = function(value)
-        if (type(value) == "table") then
-            value = value[1]
-        end
-        Config.Farm.SelectedTool = value or ""
-    end
-}
-
-local player = game.Players.LocalPlayer
-
-local function tryEquipTool(tool)
-    local char = player.Character
-    local humanoid = char and char:FindFirstChild("Humanoid")
-    if humanoid and tool then
-        humanoid:EquipTool(tool)
-    end
-end
-
-local function handleNewTool(tool)
-    if not tool:IsA("Tool") then return end
-
-    toolDropdown:Refresh(GetToolOptions())
-
-    if tool.Name == Config.Farm.SelectedTool then
-        tryEquipTool(tool)
-    end
-end
-
-local function setupBackpack()
-    local backpack = player:WaitForChild("Backpack")
-
-
-    for _, tool in ipairs(backpack:GetChildren()) do
-        handleNewTool(tool)
-    end
-
-
-    backpack.ChildAdded:Connect(handleNewTool)
-end
-
-
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    setupBackpack()
-end)
-
-
-setupBackpack()
-
-
-Subsections.Automation:Button{
-    Name = "Refresh Tools",
-    Flag = "RefreshTools",
-    Callback = function()
-        toolDropdown:Refresh(GetToolOptions())
+        Config.Farm.SelectedTool = value:gsub("^%s*(.-)%s*$", "%1")
     end
 }
 
