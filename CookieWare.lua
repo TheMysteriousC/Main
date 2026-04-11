@@ -287,7 +287,7 @@ local Config =
 
     Drop =
     {
-        SelectedItem = "",
+        SelectedItems = {},
         LoopDrop = false,
         LoopInterval = 0.5,
         Items = {},
@@ -618,8 +618,10 @@ local Features =
 
         LoopDrop = function(self)
             while (Config.Drop.LoopDrop) do
-                if (Config.Drop.SelectedItem ~= "") then
-                    self:DropItem(Config.Drop.SelectedItem)
+                for _,itemName in pairs(Config.Drop.SelectedItems) do
+                    if (itemName and itemName ~= "") then
+                        self:DropItem(itemName)
+                    end
                 end
                 task.wait(Config.Drop.LoopInterval)
             end
@@ -934,16 +936,13 @@ Subsections.Armour:Toggle{
 }
 
 local dropItemDropdown = Subsections.DropItems:Dropdown{
-    Name = "Select Item",
+    Name = "Select Items",
     Options = Utils:GetInventoryItems(),
-    Default = {Config.Drop.SelectedItem},
-    Max = 1,
-    Flag = "DropSelectedItem",
+    Default = Config.Drop.SelectedItems,
+    Max = 99,
+    Flag = "DropSelectedItems",
     Callback = function(value)
-        if (type(value) == "table") then
-            value = value[1]
-        end
-        Config.Drop.SelectedItem = value or ""
+        Config.Drop.SelectedItems = value or {}
     end
 }
 
@@ -956,10 +955,14 @@ Subsections.DropItems:Button{
 }
 
 Subsections.DropItems:Button{
-    Name = "Drop Item",
+    Name = "Drop Items",
     Flag = "DropItemButton",
     Callback = function()
-        Features.Drop:DropItem(Config.Drop.SelectedItem)
+        for _,itemName in pairs(Config.Drop.SelectedItems) do
+            if (itemName and itemName ~= "") then
+                Features.Drop:DropItem(itemName)
+            end
+        end
     end
 }
 
@@ -979,7 +982,7 @@ Subsections.DropItems:Toggle{
 
 Subsections.DropSettings:Slider{
     Name = "Loop Interval (seconds)",
-    Min = 0.00000000000000001,
+    Min = 0.00000001,
     Max = 10,
     Default = Config.Drop.LoopInterval,
     Flag = "LoopDropInterval",
