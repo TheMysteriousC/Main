@@ -979,7 +979,7 @@ Subsections.DropItems:Toggle{
 
 Subsections.DropSettings:Slider{
     Name = "Loop Interval (seconds)",
-    Min = 0.1,
+    Min = 0.00000001,
     Max = 10,
     Default = Config.Drop.LoopInterval,
     Flag = "LoopDropInterval",
